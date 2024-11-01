@@ -1,63 +1,72 @@
-﻿using QualityCompany.Modules.Core;
+using QualityCompany.Modules.Core;
 using UnityEngine;
 using static QualityCompany.Events.GameEvents;
 
-namespace QualityCompany.Modules.Inventory;
-
-[Module(Delayed = true)]
-internal class ShotgunAmmoModule : InventoryBaseUI
+namespace QualityCompany.Modules.Inventory
 {
-    private static readonly Color TextColorFull = new(0f, 1f, 0f, 0.75f);
-    private static readonly Color TextColorHalf = new(1f, 243f / 255f, 36f / 255f, 0.75f);
-    private static readonly Color TextColorEmpty = new(1f, 0f, 0f, 0.75f);
-
-    public ShotgunAmmoModule() : base(nameof(ShotgunAmmoModule))
-    { }
-
-    [ModuleOnLoad]
-    private static ShotgunAmmoModule Spawn()
+    [Module(Delayed = true)]
+    internal class ShotgunAmmoModule : InventoryBaseUI
     {
-        if (!Plugin.Instance.PluginConfig.InventoryShowShotgunAmmoCounterUI) return null;
+        private static readonly Color TextColorFull = new(0f, 1f, 0f, 0.75f);
+        private static readonly Color TextColorHalf = new(0.953f, 0.953f, 0.141f, 0.75f);  // Converted to 0-1 range.
+        private static readonly Color TextColorEmpty = new(1f, 0f, 0f, 0.75f);
 
-        var go = new GameObject(nameof(ShotgunAmmoModule));
-        return go.AddComponent<ShotgunAmmoModule>();
-    }
+        public ShotgunAmmoModule() : base(nameof(ShotgunAmmoModule))
+        { }
 
-    private new void Awake()
-    {
-        base.Awake();
-
-        for (var i = 0; i < GameNetworkManager.Instance.localPlayerController.ItemSlots.Length; i++)
+        [ModuleOnLoad]
+        private static ShotgunAmmoModule SpawnShotgunAmmoModule()
         {
-            Texts.Add(CreateInventoryGameObject($"qc_HUDShotgunAmmoUI{i}", 16, HUDManager.Instance.itemSlotIconFrames[i].gameObject.transform));
+            if (!Plugin.Instance.PluginConfig.InventoryShowShotgunAmmoCounterUI)
+            {
+                Debug.Log("Shotgun Ammo Module UI not enabled in config.");
+                return null;
+            }
+
+            var go = new GameObject(nameof(ShotgunAmmoModule));
+            return go.AddComponent<ShotgunAmmoModule>();
         }
-    }
 
-    [ModuleOnAttach]
-    private void Attach()
-    {
-        PlayerGrabObjectClientRpc += OnUpdate;
-        PlayerThrowObjectClientRpc += OnUpdate;
-        PlayerDiscardHeldObject += OnUpdate;
-        PlayerDropAllHeldItems += HideAll;
-        PlayerDeath += HideAll;
-        PlayerShotgunShoot += OnUpdate;
-        PlayerShotgunReload += OnUpdate;
-    }
-
-    protected override void OnUpdate(GrabbableObject item, int index)
-    {
-        var shotgunItem = item.GetComponent<ShotgunItem>();
-        if (shotgunItem is null) return;
-
-        var shellsLoaded = shotgunItem.shellsLoaded;
-        var color = shellsLoaded switch
+        private void Awake()
         {
-            2 => TextColorFull,
-            1 => TextColorHalf,
-            _ => TextColorEmpty
-        };
+            base.Awake();
+            
+            // Initialize ammo UI slots based on the player’s inventory slots
+            for (var i = 0; i < GameNetworkManager.Instance.localPlayerController.ItemSlots.Length; i++)
+            {
+                Texts.Add(CreateInventoryGameObject($"qc_HUDShotgunAmmoUI{i}", 16, 
+                    HUDManager.Instance.itemSlotIconFrames[i].gameObject.transform));
+            }
+        }
 
-        UpdateItemSlotText(index, shellsLoaded.ToString(), color);
+        [ModuleOnAttach]
+        private void AttachEvents()
+        {
+            PlayerGrabObjectClientRpc += OnUpdate;
+            PlayerThrowObjectClientRpc += OnUpdate;
+            PlayerDiscardHeldObject += OnUpdate;
+            PlayerDropAllHeldItems += HideAll;
+            PlayerDeath += HideAll;
+            PlayerShotgunShoot += OnUpdate;
+            PlayerShotgunReload += OnUpdate;
+        }
+
+        protected override void OnUpdate(GrabbableObject item, int index)
+        {
+            if (item == null) return;  // Added null check for item
+            
+            var shotgunItem = item.GetComponent<ShotgunItem>();
+            if (shotgunItem == null) return;
+
+            var shellsLoaded = shotgunItem.shellsLoaded;
+            var color = shellsLoaded switch
+            {
+                2 => TextColorFull,
+                1 => TextColorHalf,
+                _ => TextColorEmpty
+            };
+
+            UpdateItemSlotText(index, shellsLoaded.ToString(), color);
+        }
     }
 }
