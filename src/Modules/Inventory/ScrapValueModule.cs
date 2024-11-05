@@ -10,19 +10,21 @@ namespace QualityCompany.Modules.Inventory;
 [Module(Delayed = true)]
 internal class ScrapValueModule : InventoryBaseUI
 {
-    private static readonly Color TextColorAbove150 = new(255f / 255f, 128f / 255f, 0f / 255f, 1f); // Legendary orange
+    private static readonly Color TextColorAbove150 = new(255f / 255f, 128f / 255f, 0f / 255f, 1f); // Legendary orange??
     private static readonly Color TextColorAbove100 = new(1f, 128f / 255f, 237f / 255f, 0.75f); // Epic
-    private static readonly Color TextColor69 = new(0f, 112f / 255f, 221f / 255f, 0.75f); // Crrtz
-    private static readonly Color TextColorAbove50 = new(30f / 255f, 1f, 0f, 0.75f); // Green
-    private static readonly Color TextColorNoobs = new(1f, 1f, 1f, 0.75f); // Default color
+    private static readonly Color TextColor69 = new(0f, 112f / 255f, 221f / 255f, 0.75f); // Crrtz?
+    private static readonly Color TextColorAbove50 = new(30f / 255f, 1f, 0f, 0.75f); // green
+    private static readonly Color TextColorNoobs = new(1f, 1f, 1f, 0.75f);
 
     private TextMeshProUGUI? _totalScrapValueText;
+    // private DateTime _currentUpdateTime = DateTime.Now;
+    // private readonly float _deltaForceRefreshDurationMs = 2000;
 
-    public ScrapValueModule()
+    public ScrapValueModule() : base(nameof(ScrapValueModule))
     { }
 
     [ModuleOnLoad]
-    private static ScrapValueModule? Spawn()
+    private static ScrapValueModule Spawn()
     {
         if (!Plugin.Instance.PluginConfig.InventoryShowScrapUI) return null;
 
@@ -30,7 +32,7 @@ internal class ScrapValueModule : InventoryBaseUI
         return go.AddComponent<ScrapValueModule>();
     }
 
-    private void Awake()
+    private new void Awake()
     {
         base.Awake();
 
@@ -47,6 +49,7 @@ internal class ScrapValueModule : InventoryBaseUI
 
             if (i == 0 && Plugin.Instance.PluginConfig.InventoryShowTotalScrapUI)
             {
+                // Invert positioning on the first slot to be 90 degrees opposite to the current item value
                 _totalScrapValueText = CreateInventoryGameObject("qc_HUDScrapUITotal", 8, iconFrame, new Vector2(scrapLocalPositionDelta.y * 3, scrapLocalPositionDelta.x * 3));
             }
         }
@@ -59,36 +62,25 @@ internal class ScrapValueModule : InventoryBaseUI
         StartCoroutine(ForceRefreshScrapCoroutine());
     }
 
+    // ReSharper disable once FunctionRecursiveOnAllPaths
     private IEnumerator ForceRefreshScrapCoroutine()
     {
         Logger.LogDebug("ForceRefreshScrapCoroutine");
-        while (true)
-        {
-            yield return new WaitForSeconds(1);
-            ForceUpdateAllSlots(GameNetworkManager.Instance.localPlayerController);
-        }
+        yield return new WaitForSeconds(1);
+
+        ForceUpdateAllSlots(GameNetworkManager.Instance.localPlayerController);
+
+        StartCoroutine(ForceRefreshScrapCoroutine());
     }
 
     [ModuleOnAttach]
     private void Attach()
     {
-        if (Plugin.Instance.PluginConfig.InventoryShowScrapUI)
-        {
-            PlayerGrabObjectClientRpc += OnUpdate;
-            PlayerThrowObjectClientRpc += OnUpdate;
-            PlayerDiscardHeldObject += OnUpdate;
-            PlayerDropAllHeldItems += HideAll;
-            PlayerDeath += HideAll;
-        }
-    }
-
-    private void OnDestroy()
-    {
-        PlayerGrabObjectClientRpc -= OnUpdate;
-        PlayerThrowObjectClientRpc -= OnUpdate;
-        PlayerDiscardHeldObject -= OnUpdate;
-        PlayerDropAllHeldItems -= HideAll;
-        PlayerDeath -= HideAll;
+        PlayerGrabObjectClientRpc += OnUpdate;
+        PlayerThrowObjectClientRpc += OnUpdate;
+        PlayerDiscardHeldObject += OnUpdate;
+        PlayerDropAllHeldItems += HideAll;
+        PlayerDeath += HideAll;
     }
 
     protected override void OnUpdate(GrabbableObject currentHeldItem, int currentItemSlotIndex)
@@ -121,37 +113,16 @@ internal class ScrapValueModule : InventoryBaseUI
     {
         if (_totalScrapValueText is null) return;
 
-        var networkManager = GameNetworkManager.Instance;
-        if (networkManager == null)
+        if (GameNetworkManager.Instance?.localPlayerController?.ItemSlots is null)
         {
-            Logger.LogWarning("UpdateTotalScrapValue: GameNetworkManager.Instance is null");
-            return;
-        }
-
-        var localPlayer = networkManager.localPlayerController;
-        if (localPlayer == null)
-        {
-            Logger.LogWarning("UpdateTotalScrapValue: localPlayerController is null");
-            return;
-        }
-
-        var itemSlots = localPlayer.ItemSlots;
-        if (itemSlots == null)
-        {
-            Logger.LogWarning("UpdateTotalScrapValue: localPlayerController.ItemSlots is null");
+            Logger.LogWarning("UpdateTotalScrapValue: GNM.Instance?.localPlayerController?.ItemSlots is null");
             return;
         }
 
         var totalScrapValue = 0;
-        foreach (var slotScrap in itemSlots)
+        foreach (var slotScrap in GameNetworkManager.Instance.localPlayerController.ItemSlots)
         {
-            if (slotScrap == null)
-            {
-                Logger.LogWarning("UpdateTotalScrapValue: Found a null slotScrap in ItemSlots");
-                continue;
-            }
-
-            if (!slotScrap.itemProperties.isScrap || slotScrap.scrapValue <= 0) continue;
+            if (slotScrap is null || !slotScrap.itemProperties.isScrap || slotScrap.scrapValue <= 0) continue;
 
             totalScrapValue += slotScrap.scrapValue;
         }
@@ -175,12 +146,17 @@ internal class ScrapValueModule : InventoryBaseUI
 
     internal static Vector2 GetLocalPositionDelta(float parentRotationZ, float parentSizeX, float parentSizeY)
     {
-        return Mathf.RoundToInt(parentRotationZ / 90) * 90 switch
+        // Z - Rotation mapping for moving text "up"
+        // 0    -> ++y
+        // 90   -> ++x
+        // 180  -> --y
+        // 270  -> --x
+        return parentRotationZ switch
         {
-            270 => new Vector2(-parentSizeX / 2f, 0f), // 270° moves left
-            180 => new Vector2(0f, -parentSizeY / 2f), // 180° moves down
-            90 => new Vector2(parentSizeX / 2f, 0f),   // 90° moves right
-            _ => new Vector2(0f, parentSizeY / 2f)     // 0° moves up
+            >= 270 => new Vector2(-parentSizeX / 2f, 0f),
+            >= 180 => new Vector2(0f, -parentSizeY / 2f),
+            >= 90 => new Vector2(parentSizeX / 2f, 0f),
+            _ => new Vector2(0f, parentSizeY / 2f)
         };
     }
 }
