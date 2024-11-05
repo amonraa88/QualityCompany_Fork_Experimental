@@ -42,7 +42,7 @@ namespace QualityCompany.Modules.Core
             Logger.TryLogDebug($"Loading up modules with a {delay} seconds delay...");
 
             // Load non-delayed modules
-            foreach (var internalModule in ModuleRegistry.Modules?.Where(x => !x.DelayedStart) ?? Enumerable.Empty<Module>())
+            foreach (var internalModule in ModuleRegistry.Modules?.Where(x => !x.DelayedStart) ?? Enumerable.Empty<InternalModule>())
             {
                 Logger.TryLogDebug($"Starting up {internalModule.Name}");
                 var instance = internalModule.OnLoad?.Invoke(null, null);
@@ -55,7 +55,7 @@ namespace QualityCompany.Modules.Core
             yield return new WaitForSeconds(delay);
 
             // Load delayed modules
-            foreach (var internalModule in ModuleRegistry.Modules?.Where(x => x.DelayedStart) ?? Enumerable.Empty<Module>())
+            foreach (var internalModule in ModuleRegistry.Modules?.Where(x => x.DelayedStart) ?? Enumerable.Empty<InternalModule>())
             {
                 Logger.TryLogDebug($"Starting up {internalModule.Name}");
                 var instance = internalModule.OnLoad?.Invoke(null, null);
@@ -72,7 +72,7 @@ namespace QualityCompany.Modules.Core
         {
             Logger.TryLogDebug("Detaching all modules...");
 
-            foreach (var internalModule in ModuleRegistry.Modules ?? Enumerable.Empty<Module>())
+            foreach (var internalModule in ModuleRegistry.Modules ?? Enumerable.Empty<InternalModule>())
             {
                 if (internalModule.Instance == null) continue;
 
