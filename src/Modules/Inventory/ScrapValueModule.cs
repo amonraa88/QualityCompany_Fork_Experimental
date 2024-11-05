@@ -18,7 +18,7 @@ internal class ScrapValueModule : InventoryBaseUI
 
     private TextMeshProUGUI? _totalScrapValueText;
 
-    public ScrapValueModule() : base(nameof(ScrapValueModule))
+    public ScrapValueModule()
     { }
 
     [ModuleOnLoad]
@@ -47,7 +47,6 @@ internal class ScrapValueModule : InventoryBaseUI
 
             if (i == 0 && Plugin.Instance.PluginConfig.InventoryShowTotalScrapUI)
             {
-                // Invert positioning on the first slot to be 90 degrees opposite to the current item value
                 _totalScrapValueText = CreateInventoryGameObject("qc_HUDScrapUITotal", 8, iconFrame, new Vector2(scrapLocalPositionDelta.y * 3, scrapLocalPositionDelta.x * 3));
             }
         }
@@ -85,7 +84,6 @@ internal class ScrapValueModule : InventoryBaseUI
 
     private void OnDestroy()
     {
-        // Clean up to avoid memory leaks
         PlayerGrabObjectClientRpc -= OnUpdate;
         PlayerThrowObjectClientRpc -= OnUpdate;
         PlayerDiscardHeldObject -= OnUpdate;
