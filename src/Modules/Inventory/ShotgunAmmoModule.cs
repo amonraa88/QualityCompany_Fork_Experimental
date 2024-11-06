@@ -1,4 +1,5 @@
-using QualityCompany.Modules.Core;
+
+﻿using QualityCompany.Modules.Core;
 using UnityEngine;
 using static QualityCompany.Events.GameEvents;
 
@@ -8,38 +9,33 @@ namespace QualityCompany.Modules.Inventory;
 internal class ShotgunAmmoModule : InventoryBaseUI
 {
     private static readonly Color TextColorFull = new(0f, 1f, 0f, 0.75f);
-    private static readonly Color TextColorHalf = new(0.953f, 0.953f, 0.141f, 0.75f);
+    private static readonly Color TextColorHalf = new(1f, 243f / 255f, 36f / 255f, 0.75f);
     private static readonly Color TextColorEmpty = new(1f, 0f, 0f, 0.75f);
 
-    public ShotgunAmmoModule() { }
+    public ShotgunAmmoModule() : base(nameof(ShotgunAmmoModule))
+    { }
 
     [ModuleOnLoad]
-    private static ShotgunAmmoModule SpawnShotgunAmmoModule()
+    private static ShotgunAmmoModule Spawn()
     {
-        if (!Plugin.Instance.PluginConfig.InventoryShowShotgunAmmoCounterUI)
-        {
-            Debug.Log("Shotgun Ammo Module UI not enabled in config.");
-            return null;
-        }
+        if (!Plugin.Instance.PluginConfig.InventoryShowShotgunAmmoCounterUI) return null;
 
         var go = new GameObject(nameof(ShotgunAmmoModule));
         return go.AddComponent<ShotgunAmmoModule>();
     }
 
-    private void Awake()
+    private new void Awake()
     {
         base.Awake();
-        
-        // Initialize ammo UI slots based on the player’s inventory slots
+
         for (var i = 0; i < GameNetworkManager.Instance.localPlayerController.ItemSlots.Length; i++)
         {
-            Texts.Add(CreateInventoryGameObject($"qc_HUDShotgunAmmoUI{i}", 16, 
-                HUDManager.Instance.itemSlotIconFrames[i].gameObject.transform));
+            Texts.Add(CreateInventoryGameObject($"qc_HUDShotgunAmmoUI{i}", 16, HUDManager.Instance.itemSlotIconFrames[i].gameObject.transform));
         }
     }
 
     [ModuleOnAttach]
-    private void AttachEvents()
+    private void Attach()
     {
         PlayerGrabObjectClientRpc += OnUpdate;
         PlayerThrowObjectClientRpc += OnUpdate;
@@ -52,10 +48,8 @@ internal class ShotgunAmmoModule : InventoryBaseUI
 
     protected override void OnUpdate(GrabbableObject item, int index)
     {
-        if (item == null) return;
-        
         var shotgunItem = item.GetComponent<ShotgunItem>();
-        if (shotgunItem == null) return;
+        if (shotgunItem is null) return;
 
         var shellsLoaded = shotgunItem.shellsLoaded;
         var color = shellsLoaded switch
